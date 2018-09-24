@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include <windows.h>
 #include <iostream>
 
@@ -9,6 +10,29 @@ HANDLE childStd_IN_Rd = NULL;
 HANDLE childStd_IN_Wr = NULL;
 HANDLE childStd_OUT_Rd = NULL;
 HANDLE childStd_OUT_Wr = NULL;
+
+void ReadFromPipe()
+{
+	DWORD dwRead, dwWritten;
+	CHAR chBuf[BUFSIZE];
+	BOOL success = FALSE;
+	HANDLE hParentStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
+
+	while (1)
+	{
+		success = ReadFile(childStd_OUT_Rd, chBuf, BUFSIZE, &dwRead, NULL);
+		if (!success || dwRead == 0) break;
+
+		/*if (chBuf[dwRead - 1] == '>')
+		{
+			cout.write(chBuf, dwRead);
+			break;
+		}*/
+		success = WriteFile(hParentStdOut, chBuf,
+		dwRead, &dwWritten, NULL);
+		if (!success) break;
+	}
+}
 
 int main()
 {
@@ -42,7 +66,7 @@ int main()
 	startInfo.hStdError = childStd_OUT_Wr;
 	startInfo.hStdOutput = childStd_OUT_Wr;
 	startInfo.hStdInput = childStd_IN_Rd;
-	startInfo.dwFlags |= STARTF_USESTDHANDLES;
+	startInfo.dwFlags |= STARTF_USESTDHANDLES | STARTF_USECOUNTCHARS;
 
 	// Create the child process. 
 
@@ -59,6 +83,53 @@ int main()
 
 	if (!success)
 		cout << "Error (CreateProcess)" << GetLastError();
+	else
+	{
+		// Close handles to the child process and its primary thread.
+		// Some applications might keep these handles to monitor the status
+		// of the child process, for example. 
+
+		CloseHandle(procInfo.hProcess);
+		CloseHandle(procInfo.hThread);
+	}
+
+	CloseHandle(childStd_IN_Wr);
+	CloseHandle(childStd_IN_Rd);
+	///////////////
+	ReadFromPipe();
+
+	//DWORD dwRead, dwWritten;
+	//CHAR chBuf[BUFSIZE];
+
+	DWORD dwRead, dwWritten;
+	CHAR chBuf[BUFSIZE];
+	success = FALSE;
+	//CloseHandle(childStd_IN_Wr);
+	for (;;)
+	{
+		//ReadFile(childStd_IN_Rd, chBuf, BUFSIZE, &dwRead, NULL);
+		//if (success || dwRead == 0) break;
+		//cin >> chBuf;
+		cin.read(chBuf, 5);
+		//strcat_s(chBuf, "\n");
+		
+		//cout.write(chBuf, dwRead);
+	
+		/*success = WriteFile(childStd_IN_Wr, chBuf, dwRead, &dwWritten, NULL);
+		if (!success) break;*/
+
+		ReadFromPipe();
+	}
+
+	cout << "Test";
+
+	// Close the pipe handle so the child process stops reading. 
+
+	if (!CloseHandle(childStd_IN_Wr))
+		cout << "StdInWr CloseHandle";
+
+	////////////////////
+
 
 	system("pause");
     return 0;
