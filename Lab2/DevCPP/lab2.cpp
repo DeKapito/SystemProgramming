@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include <windows.h>
 #include <iostream>
 #include <string>
@@ -17,22 +16,17 @@ void ReadFromPipe()
 	DWORD dwRead;
 	CHAR chBuf[BUFSIZE];
 	BOOL success = FALSE;
-	//HANDLE hParentStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
 
-	while (1)
+	while (TRUE)
 	{
 		success = ReadFile(childStd_OUT_Rd, chBuf, BUFSIZE, &dwRead, NULL);
 		if (!success || dwRead == 0) break;
 
 		cout.write(chBuf, dwRead);
-
 		if (chBuf[dwRead - 1] == '>')
 		{
-			//cout.write(chBuf, dwRead);
 			break;
 		}
-		/*success = WriteFile(hParentStdOut, chBuf, dwRead, &dwWritten, NULL);
-		if (!success) break;*/
 	}
 }
 
@@ -92,38 +86,45 @@ int main()
 		CloseHandle(procInfo.hThread);
 	}
 
-	//ReadFromPipe();
-
-	//DWORD dwRead, dwWritten;
-	//CHAR chBuf[BUFSIZE];
-
 	DWORD dwRead, dwWritten;
 	CHAR chBuf[BUFSIZE];
 	success = FALSE;
-	//CloseHandle(childStd_IN_Wr);
-	for (;;)
+	while (TRUE)
 	{
 		ReadFromPipe();
-		success = ReadFile(GetStdHandle(STD_INPUT_HANDLE), chBuf, BUFSIZE, &dwRead, NULL);
-		if (!success)
-			cout << "Error code (ReadFile(STD_INPUT_HANDLE)): " << GetLastError();
 
-		string str = string(chBuf).substr(0, dwRead);
-
-		if (str.substr(0, 6) != "please")
+		while (TRUE)
 		{
-			cout << "Please, ask politely!";
+			success = ReadFile(GetStdHandle(STD_INPUT_HANDLE), chBuf, BUFSIZE, &dwRead, NULL);
+			if (!success)
+				cout << "Error code (ReadFile(STD_INPUT_HANDLE)): " << GetLastError();
+
+			string str = string(chBuf).substr(0, dwRead);
+
+			if (str.substr(0, 6) == "thanks")
+			{
+				CloseHandle(childStd_IN_Wr);
+				TerminateProcess(procInfo.hProcess, 0);
+				TerminateProcess(procInfo.hThread, 0);
+				ExitProcess(0);
+			}
+			if (str.substr(0, 6) != "please")
+			{
+				cout << "Please, ask politely! \n>";
+				continue;
+			}
+			else {
+				str = str.substr(7);
+				strcpy(chBuf, str.c_str());
+				dwRead = str.length();
+				break;
+			}
 		}
-	
+		
 		success = WriteFile(childStd_IN_Wr, chBuf, dwRead, &dwWritten, NULL);
 		if (!success)
 			cout << "Error code(WriteFile): " << GetLastError();	
 	}
-
-	// Close the pipe handle so the child process stops reading. 
-
-	if (!CloseHandle(childStd_IN_Wr))
-		cout << "Error code(StdInWr CloseHandle): " << GetLastError();
 
 	system("pause");
     return 0;
