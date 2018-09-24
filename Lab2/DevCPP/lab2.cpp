@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include <windows.h>
 #include <iostream>
+#include <string>
 
 using namespace std;
 
@@ -25,11 +26,11 @@ void ReadFromPipe()
 
 		cout.write(chBuf, dwRead);
 
-		/*if (chBuf[dwRead - 1] == '>')
+		if (chBuf[dwRead - 1] == '>')
 		{
-			cout.write(chBuf, dwRead);
+			//cout.write(chBuf, dwRead);
 			break;
-		}*/
+		}
 		/*success = WriteFile(hParentStdOut, chBuf, dwRead, &dwWritten, NULL);
 		if (!success) break;*/
 	}
@@ -44,16 +45,16 @@ int main()
 	sAttrib.lpSecurityDescriptor = NULL;
 
 	if (!CreatePipe(&childStd_OUT_Rd, &childStd_OUT_Wr, &sAttrib, 0))
-		cout << "Error (CreatePipe)";
+		cout << "Error code (CreatePipe): " << GetLastError();
 
 	if (!SetHandleInformation(childStd_OUT_Rd, HANDLE_FLAG_INHERIT, 0))
-		cout << "Error (SetHandleInformation)";
+		cout << "Error code (SetHandleInformation): " << GetLastError();
 
 	if (!CreatePipe(&childStd_IN_Rd, &childStd_IN_Wr, &sAttrib, 0))
-		cout << "Error (CreatePipe2)";
+		cout << "Error code (CreatePipe2): " << GetLastError();
 
 	if (!SetHandleInformation(childStd_IN_Wr, HANDLE_FLAG_INHERIT, 0))
-		cout << "Error (SetHandleInformation2)";
+		cout << "Error code (SetHandleInformation2): " << GetLastError();
 
 	TCHAR command[] = TEXT("cmd");
 	PROCESS_INFORMATION procInfo;
@@ -83,19 +84,15 @@ int main()
 		&procInfo);  // receives PROCESS_INFORMATION 
 
 	if (!success)
-		cout << "Error (CreateProcess)" << GetLastError();
+		cout << "Error code (CreateProcess): " << GetLastError();
 	else
 	{
-		// Close handles to the child process and its primary thread.
-		// Some applications might keep these handles to monitor the status
-		// of the child process, for example. 
-		CloseHandle(childStd_OUT_Wr);
-		CloseHandle(childStd_IN_Wr);
+		CloseHandle(childStd_OUT_Wr);;
 		CloseHandle(procInfo.hProcess);
 		CloseHandle(procInfo.hThread);
 	}
-	///////////////
-	ReadFromPipe();
+
+	//ReadFromPipe();
 
 	//DWORD dwRead, dwWritten;
 	//CHAR chBuf[BUFSIZE];
@@ -106,35 +103,27 @@ int main()
 	//CloseHandle(childStd_IN_Wr);
 	for (;;)
 	{
-		//ReadFile(childStd_IN_Rd, chBuf, BUFSIZE, &dwRead, NULL);
-		//if (success || dwRead == 0) break;
-		//cin >> chBuf;
-		//fgets(chBuf, BUFSIZE, stdin);
+		ReadFromPipe();
 		success = ReadFile(GetStdHandle(STD_INPUT_HANDLE), chBuf, BUFSIZE, &dwRead, NULL);
-		cout.write(chBuf, dwRead);
-		//cin.read(chBuf, 5);
-		//strcat_s(chBuf, "\n");
-		
-		//cout.write(chBuf, dwRead);
+		if (!success)
+			cout << "Error code (ReadFile(STD_INPUT_HANDLE)): " << GetLastError();
+
+		string str = string(chBuf).substr(0, dwRead);
+
+		if (str.substr(0, 6) != "please")
+		{
+			cout << "Please, ask politely!";
+		}
 	
 		success = WriteFile(childStd_IN_Wr, chBuf, dwRead, &dwWritten, NULL);
 		if (!success)
-		{
-			cout << GetLastError();
-		}
-
-		
+			cout << "Error code(WriteFile): " << GetLastError();	
 	}
-
-	cout << "Test";
 
 	// Close the pipe handle so the child process stops reading. 
 
 	if (!CloseHandle(childStd_IN_Wr))
-		cout << "StdInWr CloseHandle";
-
-	////////////////////
-
+		cout << "Error code(StdInWr CloseHandle): " << GetLastError();
 
 	system("pause");
     return 0;
