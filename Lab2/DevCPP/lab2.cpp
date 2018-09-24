@@ -13,24 +13,25 @@ HANDLE childStd_OUT_Wr = NULL;
 
 void ReadFromPipe()
 {
-	DWORD dwRead, dwWritten;
+	DWORD dwRead;
 	CHAR chBuf[BUFSIZE];
 	BOOL success = FALSE;
-	HANDLE hParentStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
+	//HANDLE hParentStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
 
 	while (1)
 	{
 		success = ReadFile(childStd_OUT_Rd, chBuf, BUFSIZE, &dwRead, NULL);
 		if (!success || dwRead == 0) break;
 
+		cout.write(chBuf, dwRead);
+
 		/*if (chBuf[dwRead - 1] == '>')
 		{
 			cout.write(chBuf, dwRead);
 			break;
 		}*/
-		success = WriteFile(hParentStdOut, chBuf,
-		dwRead, &dwWritten, NULL);
-		if (!success) break;
+		/*success = WriteFile(hParentStdOut, chBuf, dwRead, &dwWritten, NULL);
+		if (!success) break;*/
 	}
 }
 
@@ -66,11 +67,11 @@ int main()
 	startInfo.hStdError = childStd_OUT_Wr;
 	startInfo.hStdOutput = childStd_OUT_Wr;
 	startInfo.hStdInput = childStd_IN_Rd;
-	startInfo.dwFlags |= STARTF_USESTDHANDLES | STARTF_USECOUNTCHARS;
+	startInfo.dwFlags |= STARTF_USESTDHANDLES;
 
 	// Create the child process. 
 
-	success = CreateProcess(NULL,
+	success = CreateProcess(TEXT("C:\\WINDOWS\\system32\\cmd.exe"),
 		command,     // command line 
 		NULL,          // process security attributes 
 		NULL,          // primary thread security attributes 
@@ -88,13 +89,11 @@ int main()
 		// Close handles to the child process and its primary thread.
 		// Some applications might keep these handles to monitor the status
 		// of the child process, for example. 
-
+		CloseHandle(childStd_OUT_Wr);
+		CloseHandle(childStd_IN_Wr);
 		CloseHandle(procInfo.hProcess);
 		CloseHandle(procInfo.hThread);
 	}
-
-	CloseHandle(childStd_IN_Wr);
-	CloseHandle(childStd_IN_Rd);
 	///////////////
 	ReadFromPipe();
 
@@ -110,15 +109,21 @@ int main()
 		//ReadFile(childStd_IN_Rd, chBuf, BUFSIZE, &dwRead, NULL);
 		//if (success || dwRead == 0) break;
 		//cin >> chBuf;
-		cin.read(chBuf, 5);
+		//fgets(chBuf, BUFSIZE, stdin);
+		success = ReadFile(GetStdHandle(STD_INPUT_HANDLE), chBuf, BUFSIZE, &dwRead, NULL);
+		cout.write(chBuf, dwRead);
+		//cin.read(chBuf, 5);
 		//strcat_s(chBuf, "\n");
 		
 		//cout.write(chBuf, dwRead);
 	
-		/*success = WriteFile(childStd_IN_Wr, chBuf, dwRead, &dwWritten, NULL);
-		if (!success) break;*/
+		success = WriteFile(childStd_IN_Wr, chBuf, dwRead, &dwWritten, NULL);
+		if (!success)
+		{
+			cout << GetLastError();
+		}
 
-		ReadFromPipe();
+		
 	}
 
 	cout << "Test";
